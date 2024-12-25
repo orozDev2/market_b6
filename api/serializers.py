@@ -12,38 +12,38 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            'id',
-            'username',
-            'first_name',
-            'last_name',
-            'email',
+            "id",
+            "username",
+            "first_name",
+            "last_name",
+            "email",
         )
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImage
-        exclude = ('created_at', 'updated_at', 'product')
+        exclude = ("created_at", "updated_at", "product")
 
 
 class ProductAttributeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductAttribute
-        exclude = ('created_at', 'updated_at', 'product')
+        exclude = ("created_at", "updated_at", "product")
 
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         # fields = '__all__'
-        exclude = ('created_at', 'updated_at')
+        exclude = ("created_at", "updated_at")
 
 
 class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
         # fields = '__all__'
-        exclude = ('created_at', 'updated_at')
+        exclude = ("created_at", "updated_at")
 
 
 class ListProductSerializer(serializers.ModelSerializer):
@@ -59,7 +59,11 @@ class ListProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        exclude = ('created_at', 'updated_at', 'content',)
+        exclude = (
+            "created_at",
+            "updated_at",
+            "content",
+        )
 
 
 class DetailProductSerializer(serializers.ModelSerializer):
@@ -76,13 +80,28 @@ class DetailProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = '__all__'
+        fields = "__all__"
 
 
 class UpdateProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
-        fields = '__all__'
+        fields = (
+            "name",
+            "description",
+            "content",
+            "category",
+            "tags",
+            "price",
+            "receive_type",
+            "rating",
+            "is_published",
+        )
+
+    def validate_price(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Цена не может быть отрицательной")
+        return value
 
 
 class CreateProductSerializer(serializers.ModelSerializer):
@@ -92,12 +111,12 @@ class CreateProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = '__all__'
+        fields = "__all__"
 
     def create(self, validated_data):
-        images = validated_data.pop('images')
-        attributes = validated_data.pop('attributes')
-        tags = validated_data.pop('tags')
+        images = validated_data.pop("images")
+        attributes = validated_data.pop("attributes")
+        tags = validated_data.pop("tags")
 
         file_images = []
 
@@ -107,7 +126,9 @@ class CreateProductSerializer(serializers.ModelSerializer):
                 file_images.append(file)
             except Exception as e:
                 print(e)
-                raise serializers.ValidationError({'images': ['Загрузите корректное изображение']})
+                raise serializers.ValidationError(
+                    {"images": ["Загрузите корректное изображение"]}
+                )
 
         product = super().create(validated_data)
         product.tags.add(*tags)
@@ -127,17 +148,17 @@ class UploadProductImageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProductImage
-        fields = '__all__'
+        fields = "__all__"
 
 
 class CreateProductAttributeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProductAttribute
-        fields = '__all__'
+        fields = "__all__"
 
 
 class UpdateProductAttributeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductAttribute
-        fields = ('name', 'value')
+        fields = ("name", "value")

@@ -57,7 +57,7 @@ def delete_product_image(request, pk):
 
 @api_view(['POST'])
 def create_product_attribute(request):
-    serializer = CreateProductAttributeSerializer()
+    serializer = CreateProductAttributeSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     serializer.save()
     return Response(serializer.data, status.HTTP_201_CREATED)
@@ -81,15 +81,21 @@ def delete_update_product_attribute(request, pk):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 def category_list(request):
     if request.method == 'GET':
         categories = Category.objects.all()
-        serializer = CategorySerializer(categories, many=True, context={'request': request})
+        serializer = CategorySerializer(categories, many=True)
         return Response(serializer.data)
+    
+    elif request.method == 'POST':
+        serializer = CategorySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-@api_view(['GET'])
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 def category_detail(request, pk):
     category = get_object_or_404(Category, pk=pk)
 
@@ -97,19 +103,47 @@ def category_detail(request, pk):
         serializer = CategorySerializer(category)
         return Response(serializer.data)
 
+    if request.method in ['PUT', 'PATCH']:
+        partial = request.method == 'PATCH'
+        serializer = CategorySerializer(category, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
-@api_view(['GET', ])
+    if request.method == 'DELETE':
+        category.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['GET', 'POST'])
 def tag_list(request):
     if request.method == 'GET':
         tags = Tag.objects.all()
-        serializer = TagSerializer(tags, many=True, context={'request': request})
+        serializer = TagSerializer(tags, many=True)
         return Response(serializer.data)
+    
+    if request.method == 'POST':
+        serializer = TagSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-@api_view(['GET'])
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 def tag_detail(request, pk):
     tag = get_object_or_404(Tag, pk=pk)
 
     if request.method == 'GET':
         serializer = TagSerializer(tag)
         return Response(serializer.data)
+
+    if request.method in ['PUT', 'PATCH']:
+        partial = request.method == 'PATCH'
+        serializer = TagSerializer(tag, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    if request.method == 'DELETE':
+        tag.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
