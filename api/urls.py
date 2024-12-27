@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, include
 
 from . import views
 
@@ -13,4 +13,6 @@ urlpatterns = [
     path('categories/<int:pk>/', views.category_detail, name='category-detail'),
     path('tags/', views.tag_list, name='tag-list'),
     path('tags/<int:pk>/', views.tag_detail, name='tag-detail'),
+
+    path('auth/', include('api.auth.urls'))
 ]
