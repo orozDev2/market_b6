@@ -111,7 +111,7 @@ class CreateProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = "__all__"
+        exclude = ('user',)
 
     def create(self, validated_data):
         images = validated_data.pop("images")
@@ -129,6 +129,8 @@ class CreateProductSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"images": ["Загрузите корректное изображение"]}
                 )
+
+        validated_data['user'] = self.context['request'].user
 
         product = super().create(validated_data)
         product.tags.add(*tags)

@@ -18,8 +18,6 @@ def login_api(request):
 
     token, created = Token.objects.get_or_create(user=user)
 
-    print(token.key)
-
     user_serializer = ReadUserSerializer(user, context={'request': request})
 
     data = {
