@@ -1,8 +1,10 @@
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.decorators import api_view, permission_classes, authentication_classes, parser_classes, renderer_classes
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
+from rest_framework.generics import GenericAPIView
 
 from store.models import Tag, Category, Product, ProductImage, ProductAttribute
 from .permissions import IsSuperuserOrReadonly
@@ -11,20 +13,40 @@ from .serializers import CategorySerializer, TagSerializer, ListProductSerialize
     UpdateProductAttributeSerializer
 
 
-@api_view(['GET', 'POST'])
-@permission_classes([IsAuthenticatedOrReadOnly])
-def product_list(request):
-    if request.method == 'GET':
-        products = Product.objects.all()
-        serializer = ListProductSerializer(products, many=True, context={'request': request})
+class ListCreateProductApiView(GenericAPIView):
+
+    queryset = Product.objects.all()
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    serializer_classes = {
+        'GET': ListProductSerializer,
+        'POST': CreateProductSerializer,
+    }
+
+    def get(self, request, *args, **kwargs):
+        products = self.get_queryset()
+        serializer = self.get_serializer(products, many=True)
         return Response(serializer.data)
 
-    if request.method == 'POST':
-        serializer = CreateProductSerializer(data=request.data, context={'request': request})
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         product = serializer.save()
         read_serializer = DetailProductSerializer(product, context={'request': request})
         return Response(read_serializer.data, status=status.HTTP_201_CREATED)
+
+    def get_serializer_class(self):
+        assert self.serializer_classes is not None, (
+                "'%s' should either include a `serializer_classes` attribute, "
+                "or override the `get_serializer_class()` method."
+                % self.__class__.__name__
+        )
+
+        serializer_class = self.serializer_classes.get(self.request.method)
+
+        assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
+
+        return serializer_class
+
 
 
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
