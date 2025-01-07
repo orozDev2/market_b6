@@ -1,20 +1,19 @@
+from django.db.models import Q
 from rest_framework import status
-from rest_framework.authentication import TokenAuthentication
-from rest_framework.decorators import api_view, permission_classes, authentication_classes, parser_classes, renderer_classes
-from rest_framework.generics import get_object_or_404
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.generics import GenericAPIView
+from rest_framework.generics import get_object_or_404
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
+from rest_framework.response import Response
+from django.core.paginator import Paginator
 
 from store.models import Tag, Category, Product, ProductImage, ProductAttribute
-from .permissions import IsSuperuserOrReadonly
 from .serializers import CategorySerializer, TagSerializer, ListProductSerializer, DetailProductSerializer, \
     CreateProductSerializer, UpdateProductSerializer, UploadProductImageSerializer, CreateProductAttributeSerializer, \
     UpdateProductAttributeSerializer
 
 
 class ListCreateProductApiView(GenericAPIView):
-
     queryset = Product.objects.all()
     permission_classes = [IsAuthenticatedOrReadOnly]
     serializer_classes = {
@@ -24,8 +23,35 @@ class ListCreateProductApiView(GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         products = self.get_queryset()
+
+        search = request.GET.get('search')
+
+        if search:
+            products = products.filter(
+                Q(name__icontains=search) | Q(description__icontains=search) | Q(content__icontains=search))
+
+        ordering_fields = ['name', 'price', 'created_at', 'rating', 'receive_type']
+        ordering = request.GET.get('ordering')  # -name ['', 'name']
+        if ordering:
+            ordering = ordering.split('-')[:2] if len(ordering.split('-')) > 1 else ordering.split('-')
+            if ordering[0 if len(ordering) == 1 else 1] in ordering_fields:
+                products = products.order_by(ordering[0] if len(ordering) == 1 else '-' + ordering[1])
+
+        page, page_size = request.GET.get('page', 1), request.GET.get('page_size', 1)
+        products_count = products.count()
+
+        pagin = Paginator(products, page_size)
+        products = pagin.get_page(page)
+
         serializer = self.get_serializer(products, many=True)
-        return Response(serializer.data)
+
+        return Response({
+            'count': products_count,
+            'page_size': page_size,
+            'page': page,
+            'pages_count': pagin.num_pages,
+            'results': serializer.data
+        })
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -46,7 +72,6 @@ class ListCreateProductApiView(GenericAPIView):
         assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
 
         return serializer_class
-
 
 
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
@@ -121,7 +146,7 @@ def category_list(request):
         categories = Category.objects.all()
         serializer = CategorySerializer(categories, many=True)
         return Response(serializer.data)
-    
+
     elif request.method == 'POST':
         serializer = CategorySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -155,7 +180,7 @@ def tag_list(request):
         tags = Tag.objects.all()
         serializer = TagSerializer(tags, many=True)
         return Response(serializer.data)
-    
+
     if request.method == 'POST':
         serializer = TagSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
