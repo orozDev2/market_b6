@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from django.core.paginator import Paginator
 
 from store.models import Tag, Category, Product, ProductImage, ProductAttribute
+from .filters import ProductFilter
 from .serializers import CategorySerializer, TagSerializer, ListProductSerializer, DetailProductSerializer, \
     CreateProductSerializer, UpdateProductSerializer, UploadProductImageSerializer, CreateProductAttributeSerializer, \
     UpdateProductAttributeSerializer
@@ -30,6 +31,9 @@ class ListCreateProductApiView(GenericAPIView):
             products = products.filter(
                 Q(name__icontains=search) | Q(description__icontains=search) | Q(content__icontains=search))
 
+        filterset = ProductFilter(data=request.GET, queryset=products)
+        products = filterset.qs
+
         ordering_fields = ['name', 'price', 'created_at', 'rating', 'receive_type']
         ordering = request.GET.get('ordering')  # -name ['', 'name']
         if ordering:
@@ -37,7 +41,7 @@ class ListCreateProductApiView(GenericAPIView):
             if ordering[0 if len(ordering) == 1 else 1] in ordering_fields:
                 products = products.order_by(ordering[0] if len(ordering) == 1 else '-' + ordering[1])
 
-        page, page_size = request.GET.get('page', 1), request.GET.get('page_size', 1)
+        page, page_size = request.GET.get('page', 1), request.GET.get('page_size', 12)
         products_count = products.count()
 
         pagin = Paginator(products, page_size)
