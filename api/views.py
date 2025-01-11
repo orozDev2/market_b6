@@ -5,10 +5,13 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.filters import SearchFilter, OrderingFilter
+from django_filters.rest_framework.backends import DjangoFilterBackend
 from django.core.paginator import Paginator
 
 from store.models import Tag, Category, Product, ProductImage, ProductAttribute
 from .filters import ProductFilter
+from .paginations import SimplePagination
 from .serializers import CategorySerializer, TagSerializer, ListProductSerializer, DetailProductSerializer, \
     CreateProductSerializer, UpdateProductSerializer, UploadProductImageSerializer, CreateProductAttributeSerializer, \
     UpdateProductAttributeSerializer
@@ -17,45 +20,25 @@ from .serializers import CategorySerializer, TagSerializer, ListProductSerialize
 class ListCreateProductApiView(GenericAPIView):
     queryset = Product.objects.all()
     permission_classes = [IsAuthenticatedOrReadOnly]
+    filter_backends = [
+        SearchFilter,
+        DjangoFilterBackend,
+        OrderingFilter,
+    ]
+    filterset_fields = ['category', 'tags', 'user', 'is_published']
+    search_fields = ['name', 'description', 'content']
+    ordering_fields = ['price', 'name', 'created_at', 'rating']
     serializer_classes = {
         'GET': ListProductSerializer,
         'POST': CreateProductSerializer,
     }
+    pagination_class = SimplePagination
 
     def get(self, request, *args, **kwargs):
-        products = self.get_queryset()
-
-        search = request.GET.get('search')
-
-        if search:
-            products = products.filter(
-                Q(name__icontains=search) | Q(description__icontains=search) | Q(content__icontains=search))
-
-        filterset = ProductFilter(data=request.GET, queryset=products)
-        products = filterset.qs
-
-        ordering_fields = ['name', 'price', 'created_at', 'rating', 'receive_type']
-        ordering = request.GET.get('ordering')  # -name ['', 'name']
-        if ordering:
-            ordering = ordering.split('-')[:2] if len(ordering.split('-')) > 1 else ordering.split('-')
-            if ordering[0 if len(ordering) == 1 else 1] in ordering_fields:
-                products = products.order_by(ordering[0] if len(ordering) == 1 else '-' + ordering[1])
-
-        page, page_size = request.GET.get('page', 1), request.GET.get('page_size', 12)
-        products_count = products.count()
-
-        pagin = Paginator(products, page_size)
-        products = pagin.get_page(page)
-
+        products = self.filter_queryset(self.get_queryset())
+        products = self.paginate_queryset(products)
         serializer = self.get_serializer(products, many=True)
-
-        return Response({
-            'count': products_count,
-            'page_size': page_size,
-            'page': page,
-            'pages_count': pagin.num_pages,
-            'results': serializer.data
-        })
+        return self.get_paginated_response(serializer.data)
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -78,25 +61,52 @@ class ListCreateProductApiView(GenericAPIView):
         return serializer_class
 
 
-@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
-@permission_classes([IsAuthenticatedOrReadOnly])
-def product_detail(request, pk):
-    product = get_object_or_404(Product, pk=pk)
+class DetailUpdateDeleteProductApiView(GenericAPIView):
 
-    if request.method == 'GET':
-        serializer = DetailProductSerializer(product, context={'request': request})
+    queryset = Product.objects.all()
+    lookup_field = 'id'
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    serializer_classes= {
+        'GET': DetailProductSerializer,
+        'PATCH': UpdateProductSerializer,
+        'PUT': UpdateProductSerializer,
+    }
+
+    def get(self, request, *args, **kwargs):
+        product = self.get_object()
+        serializer = self.get_serializer(product)
         return Response(serializer.data)
 
-    if request.method in ['PUT', 'PATCH']:
-        partial = request.method == 'PATCH'
-        serializer = UpdateProductSerializer(product, data=request.data, context={'request': request}, partial=partial)
+    def put(self, request, *args, **kwargs):
+        return self.update(request)
+
+    def patch(self, request, *args, **kwargs):
+        return self.update(request, True)
+
+    def update(self, request, partial=False):
+        product = self.get_object()
+        serializer = self.get_serializer(product, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    if request.method == 'DELETE':
+    def delete(self, request, *args, **kwargs):
+        product = self.get_object()
         product.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def get_serializer_class(self):
+        assert self.serializer_classes is not None, (
+                "'%s' should either include a `serializer_classes` attribute, "
+                "or override the `get_serializer_class()` method."
+                % self.__class__.__name__
+        )
+
+        serializer_class = self.serializer_classes.get(self.request.method)
+
+        assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
+
+        return serializer_class
 
 
 @api_view(['POST'])
