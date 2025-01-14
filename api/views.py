@@ -24,6 +24,10 @@ filtering = [
 ]
 
 
+filtering = [
+    SearchFilter, DjangoFilterBackend, OrderingFilter
+]
+
 class ListCreateProductApiView(ProGenericAPIView):
     queryset = Product.objects.all()
     permission_classes_by_method = {
@@ -32,7 +36,6 @@ class ListCreateProductApiView(ProGenericAPIView):
         'OPTIONS': [AllowAny],
     }
     filter_backends = filtering
-    # filterset_fields = ['category', 'tags', 'user', 'is_published']
     filterset_class = ProductFilter
     search_fields = ['name', 'description', 'content']
     ordering_fields = ['price', 'name', 'created_at', 'rating']
@@ -96,10 +99,13 @@ class DetailUpdateDeleteProductApiView(ProGenericAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class UploadProductImage(GenericAPIView):
+class UploadProductImage(ProGenericAPIView):
     queryset = ProductImage.objects.all()
-    permission_classes = [IsAuthenticatedOrReadOnly]
-
+    permission_classes_by_method = {
+        'GET': [AllowAny],
+        'POST': [IsAuthenticated],
+        'OPTIONS': [AllowAny],
+    }
     filter_backends = filtering
     search_fields = ['product']
     filterset_fields = ['product']
@@ -126,29 +132,23 @@ class UploadProductImage(GenericAPIView):
 
         return Response(response_serializer.data)
 
-    def get_serializer_class(self):
-        assert self.serializer_classes is not None, (
-                "'%s' should either include a `serializer_classes` attribute, "
-                "or override the `get_serializer_class()` method."
-                % self.__class__.__name__
-        )
-
-        serializer_class = self.serializer_classes.get(self.request.method)
-
-        assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
-
-        return serializer_class
 
 
 class DetailProductImage(GenericAPIView):
+
     queryset = ProductImage.objects.all()
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes_by_method = {
+        'GET': [AllowAny],
+        'PATCH': [IsAuthenticated, IsOwner],
+        'PUT': [IsAuthenticated, IsOwner],
+        'DELETE': [IsAuthenticated, IsOwner],
+        'OPTIONS': [AllowAny],
+    }
     lookup_field = 'id'
     serializer_classes = {
         'GET': DetailProductImageSerializer,
         'PUT': UploadProductImageSerializer,
         'PATCH': UploadProductImageSerializer,
-        'DELETE': ...,
     }
 
     def get(self, request, *args, **kwargs):
@@ -177,23 +177,14 @@ class DetailProductImage(GenericAPIView):
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def get_serializer_class(self):
-        assert self.serializer_classes is not None, (
-                "'%s' should either include a `serializer_classes` attribute, "
-                "or override the `get_serializer_class()` method."
-                % self.__class__.__name__
-        )
 
-        serializer_class = self.serializer_classes.get(self.request.method)
-
-        assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
-
-        return serializer_class
-
-
-class ListProductAttribute(GenericAPIView):
+class ListProductAttribute(ProGenericAPIView):
     queryset = ProductAttribute.objects.all()
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes_by_method = {
+        'GET': [AllowAny],
+        'POST': [IsAuthenticated],
+        'OPTIONS': [AllowAny],
+    }
 
     filter_backends = filtering
 
@@ -222,23 +213,19 @@ class ListProductAttribute(GenericAPIView):
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    def get_serializer_class(self):
-        assert self.serializer_classes is not None, (
-                "'%s' should either include a `serializer_classes` attribute, "
-                "or override the `get_serializer_class()` method."
-                % self.__class__.__name__
-        )
 
-        serializer_class = self.serializer_classes.get(self.request.method)
-
-        assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
-
-        return serializer_class
 
 
 class DetailProductAttribute(GenericAPIView):
+
     queryset = ProductAttribute.objects.all()
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes_by_method = {
+        'GET': [AllowAny],
+        'PATCH': [IsAuthenticated, IsOwner],
+        'PUT': [IsAuthenticated, IsOwner],
+        'DELETE': [IsAuthenticated, IsOwner],
+        'OPTIONS': [AllowAny],
+    }
     lookup_field = 'id'
     serializer_classes = {
         'GET': ListAttributeSerializer,
@@ -272,23 +259,14 @@ class DetailProductAttribute(GenericAPIView):
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def get_serializer_class(self):
-        assert self.serializer_classes is not None, (
-                "'%s' should either include a `serializer_classes` attribute, "
-                "or override the `get_serializer_class()` method."
-                % self.__class__.__name__
-        )
 
-        serializer_class = self.serializer_classes.get(self.request.method)
-
-        assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
-
-        return serializer_class
-
-
-class ListProductCategory(GenericAPIView):
+class ListProductCategory(ProGenericAPIView):
     queryset = Category.objects.all()
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes_by_method = {
+        'GET': [AllowAny],
+        'POST': [IsAuthenticated],
+        'OPTIONS': [AllowAny],
+    }
 
     filter_backends = filtering
     pagination_class = SimplePagination
@@ -312,23 +290,17 @@ class ListProductCategory(GenericAPIView):
 
         return Response(serializer.data)
 
-    def get_serializer_class(self):
-        assert self.serializer_classes is not None, (
-                "'%s' should either include a `serializer_classes` attribute, "
-                "or override the `get_serializer_class()` method."
-                % self.__class__.__name__
-        )
-
-        serializer_class = self.serializer_classes.get(self.request.method)
-
-        assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
-
-        return serializer_class
-
 
 class DetailProductCategory(GenericAPIView):
+
     queryset = Category.objects.all()
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes_by_method = {
+        'GET': [AllowAny],
+        'PATCH': [IsAuthenticated, IsOwner],
+        'PUT': [IsAuthenticated, IsOwner],
+        'DELETE': [IsAuthenticated, IsOwner],
+        'OPTIONS': [AllowAny],
+    }
     lookup_field = 'id'
 
     serializer_classes = {
@@ -363,21 +335,8 @@ class DetailProductCategory(GenericAPIView):
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def get_serializer_class(self):
-        assert self.serializer_classes is not None, (
-                "'%s' should either include a `serializer_classes` attribute, "
-                "or override the `get_serializer_class()` method."
-                % self.__class__.__name__
-        )
 
-        serializer_class = self.serializer_classes.get(self.request.method)
-
-        assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
-
-        return serializer_class
-
-
-class ListProductTag(GenericAPIView):
+class ListProductTag(ProGenericAPIView):
     queryset = Tag.objects.all()
     permission_classes = [IsAuthenticatedOrReadOnly]
 
@@ -403,23 +362,17 @@ class ListProductTag(GenericAPIView):
 
         return Response(serializer.data)
 
-    def get_serializer_class(self):
-        assert self.serializer_classes is not None, (
-                "'%s' should either include a `serializer_classes` attribute, "
-                "or override the `get_serializer_class()` method."
-                % self.__class__.__name__
-        )
-
-        serializer_class = self.serializer_classes.get(self.request.method)
-
-        assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
-
-        return serializer_class
-
 
 class DetailProductTag(GenericAPIView):
+
     queryset = Tag.objects.all()
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes_by_method = {
+        'GET': [AllowAny],
+        'PATCH': [IsAuthenticated, IsOwner],
+        'PUT': [IsAuthenticated, IsOwner],
+        'DELETE': [IsAuthenticated, IsOwner],
+        'OPTIONS': [AllowAny],
+    }
     lookup_field = 'id'
 
     serializer_classes = {
@@ -454,15 +407,4 @@ class DetailProductTag(GenericAPIView):
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def get_serializer_class(self):
-        assert self.serializer_classes is not None, (
-                "'%s' should either include a `serializer_classes` attribute, "
-                "or override the `get_serializer_class()` method."
-                % self.__class__.__name__
-        )
-
-        serializer_class = self.serializer_classes.get(self.request.method)
-
-        assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
-
-        return serializer_class
+   
