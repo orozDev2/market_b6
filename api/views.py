@@ -1,29 +1,32 @@
-from django.db.models import Q
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework import status
+from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.generics import GenericAPIView
-from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated, AllowAny
 from rest_framework.response import Response
-from rest_framework.filters import SearchFilter, OrderingFilter
-from django_filters.rest_framework.backends import DjangoFilterBackend
-from django.core.paginator import Paginator
 
 from store.models import Tag, Category, Product, ProductImage, ProductAttribute
 from .filters import ProductFilter
-from .mixins import SerializerByMethodMixin, PermissionByMethodMixin, ProGenericAPIView
+from .mixins import ProGenericAPIView
 from .paginations import SimplePagination
-from .permissions import IsOwnerOrReadOnly, IsOwner
+from .permissions import IsOwner
 from .serializers import CategorySerializer, TagSerializer, ListProductSerializer, DetailProductSerializer, \
     CreateProductSerializer, UpdateProductSerializer, UploadProductImageSerializer, CreateProductAttributeSerializer, \
     UpdateProductAttributeSerializer, CreateProductImageSerializer, DetailProductImageSerializer, \
     ProductAttributeSerializer, ListAttributeSerializer, CreateUpdateCategorySerializer, DetailCategorySerializer, \
     CreateUpdateTagSerializer, DetailTagSerializer, ProductImageSerializer
 
+filtering = [
+    SearchFilter,
+    DjangoFilterBackend,
+    OrderingFilter,
+]
+
 
 class ListCreateProductApiView(ProGenericAPIView):
     queryset = Product.objects.all()
-        permission_classes_by_method = {
+    permission_classes_by_method = {
         'GET': [AllowAny],
         'POST': [IsAuthenticated],
         'OPTIONS': [AllowAny],
@@ -52,11 +55,8 @@ class ListCreateProductApiView(ProGenericAPIView):
         read_serializer = DetailProductSerializer(product, context={'request': request})
         return Response(read_serializer.data, status=status.HTTP_201_CREATED)
 
-        return serializer_class
 
-      
 class DetailUpdateDeleteProductApiView(ProGenericAPIView):
-
     queryset = Product.objects.all()
     lookup_field = 'id'
     permission_classes_by_method = {
@@ -122,10 +122,9 @@ class UploadProductImage(GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         prod = serializer.save()
-        response_serializer = DetailProductImageSerializer(prod, context={'request':request})
+        response_serializer = DetailProductImageSerializer(prod, context={'request': request})
 
         return Response(response_serializer.data)
-
 
     def get_serializer_class(self):
         assert self.serializer_classes is not None, (
@@ -139,6 +138,7 @@ class UploadProductImage(GenericAPIView):
         assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
 
         return serializer_class
+
 
 class DetailProductImage(GenericAPIView):
     queryset = ProductImage.objects.all()
@@ -163,9 +163,9 @@ class DetailProductImage(GenericAPIView):
     def patch(self, request, *args, **kwargs):
         return self.update(request, partial=True)
 
-    def update(self, request, partial = False):
+    def update(self, request, partial=False):
         product = self.get_object()
-        serializer = self.get_serializer(product, data=request.data, partial = partial)
+        serializer = self.get_serializer(product, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
@@ -216,8 +216,8 @@ class ListProductAttribute(GenericAPIView):
         return self.get_paginated_response(serializer.data)
 
     def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data = request.data)
-        serializer.is_valid(raise_exception = True)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         serializer.save()
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -234,6 +234,7 @@ class ListProductAttribute(GenericAPIView):
         assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
 
         return serializer_class
+
 
 class DetailProductAttribute(GenericAPIView):
     queryset = ProductAttribute.objects.all()
@@ -259,8 +260,8 @@ class DetailProductAttribute(GenericAPIView):
 
     def update(self, request, partial=False):
         product = self.get_object()
-        serializer = self.get_serializer(product, data = request.data, partial=partial)
-        serializer.is_valid(raise_exception = True)
+        serializer = self.get_serializer(product, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
         serializer.save()
 
         return Response(serializer.data)
@@ -306,7 +307,7 @@ class ListProductCategory(GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception = True)
+        serializer.is_valid(raise_exception=True)
         serializer.save()
 
         return Response(serializer.data)
@@ -323,6 +324,7 @@ class ListProductCategory(GenericAPIView):
         assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
 
         return serializer_class
+
 
 class DetailProductCategory(GenericAPIView):
     queryset = Category.objects.all()
@@ -350,7 +352,7 @@ class DetailProductCategory(GenericAPIView):
     def update(self, request, partial=False):
         product = self.get_object()
         serializer = self.get_serializer(product, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception = True)
+        serializer.is_valid(raise_exception=True)
         serializer.save()
 
         return Response(serializer.data)
@@ -396,7 +398,7 @@ class ListProductTag(GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception = True)
+        serializer.is_valid(raise_exception=True)
         serializer.save()
 
         return Response(serializer.data)
@@ -413,6 +415,7 @@ class ListProductTag(GenericAPIView):
         assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
 
         return serializer_class
+
 
 class DetailProductTag(GenericAPIView):
     queryset = Tag.objects.all()
@@ -440,7 +443,7 @@ class DetailProductTag(GenericAPIView):
     def update(self, request, partial=False):
         product = self.get_object()
         serializer = self.get_serializer(product, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception = True)
+        serializer.is_valid(raise_exception=True)
         serializer.save()
 
         return Response(serializer.data)
