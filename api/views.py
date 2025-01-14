@@ -16,21 +16,19 @@ from .paginations import SimplePagination
 from .permissions import IsOwnerOrReadOnly, IsOwner
 from .serializers import CategorySerializer, TagSerializer, ListProductSerializer, DetailProductSerializer, \
     CreateProductSerializer, UpdateProductSerializer, UploadProductImageSerializer, CreateProductAttributeSerializer, \
-    UpdateProductAttributeSerializer
+    UpdateProductAttributeSerializer, CreateProductImageSerializer, DetailProductImageSerializer, \
+    ProductAttributeSerializer, ListAttributeSerializer, CreateUpdateCategorySerializer, DetailCategorySerializer, \
+    CreateUpdateTagSerializer, DetailTagSerializer, ProductImageSerializer
 
 
 class ListCreateProductApiView(ProGenericAPIView):
     queryset = Product.objects.all()
-    permission_classes_by_method = {
+        permission_classes_by_method = {
         'GET': [AllowAny],
         'POST': [IsAuthenticated],
         'OPTIONS': [AllowAny],
     }
-    filter_backends = [
-        SearchFilter,
-        DjangoFilterBackend,
-        OrderingFilter,
-    ]
+    filter_backends = filtering
     # filterset_fields = ['category', 'tags', 'user', 'is_published']
     filterset_class = ProductFilter
     search_fields = ['name', 'description', 'content']
@@ -54,7 +52,9 @@ class ListCreateProductApiView(ProGenericAPIView):
         read_serializer = DetailProductSerializer(product, context={'request': request})
         return Response(read_serializer.data, status=status.HTTP_201_CREATED)
 
+        return serializer_class
 
+      
 class DetailUpdateDeleteProductApiView(ProGenericAPIView):
 
     queryset = Product.objects.all()
@@ -96,114 +96,370 @@ class DetailUpdateDeleteProductApiView(ProGenericAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def upload_product_image(request):
-    serializer = UploadProductImageSerializer(data=request.data, context={'request': request})
-    serializer.is_valid(raise_exception=True)
-    serializer.save()
-    return Response(serializer.data, status.HTTP_201_CREATED)
+class UploadProductImage(GenericAPIView):
+    queryset = ProductImage.objects.all()
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
+    filter_backends = filtering
+    search_fields = ['product']
+    filterset_fields = ['product']
+    ordering_fields = ['product']
+    pagination_class = SimplePagination
 
-@permission_classes([IsAuthenticated])
-@api_view(['DELETE'])
-def delete_product_image(request, pk):
-    product_image = get_object_or_404(ProductImage, pk=pk)
-    product_image.delete()
-    return Response(status=status.HTTP_204_NO_CONTENT)
+    serializer_classes = {
+        'GET': ProductImageSerializer,
+        'POST': CreateProductImageSerializer,
+    }
 
+    def get(self, request, *args, **kwargs):
+        image = self.filter_queryset(self.get_queryset())
+        image = self.paginate_queryset(image)
+        serializer = self.get_serializer(image, many=True)
 
-@permission_classes([IsAuthenticated])
-@api_view(['POST'])
-def create_product_attribute(request):
-    serializer = CreateProductAttributeSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    serializer.save()
-    return Response(serializer.data, status.HTTP_201_CREATED)
+        return self.get_paginated_response(serializer.data)
 
-
-@permission_classes([IsAuthenticated])
-@api_view(['DELETE', 'PUT', 'PATCH'])
-def delete_update_product_attribute(request, pk):
-    product_attribute = get_object_or_404(ProductAttribute, pk=pk)
-
-    if request.method == 'DELETE':
-        product_attribute.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    if request.method in ['PUT', 'PATCH']:
-        partial = request.method == 'PATCH'
-        serializer = UpdateProductAttributeSerializer(product_attribute, data=request.data,
-                                                      context={'request': request},
-                                                      partial=partial)
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        prod = serializer.save()
+        response_serializer = DetailProductImageSerializer(prod, context={'request':request})
+
+        return Response(response_serializer.data)
 
 
-@api_view(['GET', 'POST'])
-def category_list(request):
-    if request.method == 'GET':
-        categories = Category.objects.all()
-        serializer = CategorySerializer(categories, many=True)
+    def get_serializer_class(self):
+        assert self.serializer_classes is not None, (
+                "'%s' should either include a `serializer_classes` attribute, "
+                "or override the `get_serializer_class()` method."
+                % self.__class__.__name__
+        )
+
+        serializer_class = self.serializer_classes.get(self.request.method)
+
+        assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
+
+        return serializer_class
+
+class DetailProductImage(GenericAPIView):
+    queryset = ProductImage.objects.all()
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    lookup_field = 'id'
+    serializer_classes = {
+        'GET': DetailProductImageSerializer,
+        'PUT': UploadProductImageSerializer,
+        'PATCH': UploadProductImageSerializer,
+        'DELETE': ...,
+    }
+
+    def get(self, request, *args, **kwargs):
+        product = self.get_object()
+        serializer = self.get_serializer(product)
+
         return Response(serializer.data)
 
-    elif request.method == 'POST':
-        serializer = CategorySerializer(data=request.data)
+    def put(self, request, *args, **kwargs):
+        return self.update(request, partial=False)
+
+    def patch(self, request, *args, **kwargs):
+        return self.update(request, partial=True)
+
+    def update(self, request, partial = False):
+        product = self.get_object()
+        serializer = self.get_serializer(product, data=request.data, partial = partial)
         serializer.is_valid(raise_exception=True)
         serializer.save()
+
+        return Response(serializer.data)
+
+    def delete(self, request):
+        product = self.get_object()
+        product.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def get_serializer_class(self):
+        assert self.serializer_classes is not None, (
+                "'%s' should either include a `serializer_classes` attribute, "
+                "or override the `get_serializer_class()` method."
+                % self.__class__.__name__
+        )
+
+        serializer_class = self.serializer_classes.get(self.request.method)
+
+        assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
+
+        return serializer_class
+
+
+class ListProductAttribute(GenericAPIView):
+    queryset = ProductAttribute.objects.all()
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    filter_backends = filtering
+
+    search_fields = ['name']
+    filterset_fields = ['name']
+    ordering_fields = ['name']
+
+    pagination_class = SimplePagination
+
+    serializer_classes = {
+        'GET': ProductAttributeSerializer,
+        'POST': CreateProductAttributeSerializer,
+    }
+
+    def get(self, request, *args, **kwargs):
+        product = self.filter_queryset(self.get_queryset())
+        product = self.paginate_queryset(product)
+        serializer = self.get_serializer(product, many=True)
+
+        return self.get_paginated_response(serializer.data)
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data = request.data)
+        serializer.is_valid(raise_exception = True)
+        serializer.save()
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    def get_serializer_class(self):
+        assert self.serializer_classes is not None, (
+                "'%s' should either include a `serializer_classes` attribute, "
+                "or override the `get_serializer_class()` method."
+                % self.__class__.__name__
+        )
 
-@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
-def category_detail(request, pk):
-    category = get_object_or_404(Category, pk=pk)
+        serializer_class = self.serializer_classes.get(self.request.method)
 
-    if request.method == 'GET':
-        serializer = CategorySerializer(category)
+        assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
+
+        return serializer_class
+
+class DetailProductAttribute(GenericAPIView):
+    queryset = ProductAttribute.objects.all()
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    lookup_field = 'id'
+    serializer_classes = {
+        'GET': ListAttributeSerializer,
+        'PUT': UpdateProductAttributeSerializer,
+        'PATCH': UpdateProductAttributeSerializer,
+    }
+
+    def get(self, request, *args, **kwargs):
+        product = self.get_object()
+        serializer = self.get_serializer(product)
+
         return Response(serializer.data)
 
-    if request.method in ['PUT', 'PATCH']:
-        partial = request.method == 'PATCH'
-        serializer = CategorySerializer(category, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
+    def put(self, request, *args, **kwargs):
+        return self.update(request)
+
+    def patch(self, request, *args, **kwargs):
+        return self.update(request, partial=True)
+
+    def update(self, request, partial=False):
+        product = self.get_object()
+        serializer = self.get_serializer(product, data = request.data, partial=partial)
+        serializer.is_valid(raise_exception = True)
         serializer.save()
+
         return Response(serializer.data)
 
-    if request.method == 'DELETE':
-        category.delete()
+    def delete(self, request, *args, **kwargs):
+        product = self.get_object()
+        product.delete()
+
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    def get_serializer_class(self):
+        assert self.serializer_classes is not None, (
+                "'%s' should either include a `serializer_classes` attribute, "
+                "or override the `get_serializer_class()` method."
+                % self.__class__.__name__
+        )
 
-@api_view(['GET', 'POST'])
-def tag_list(request):
-    if request.method == 'GET':
-        tags = Tag.objects.all()
-        serializer = TagSerializer(tags, many=True)
-        return Response(serializer.data)
+        serializer_class = self.serializer_classes.get(self.request.method)
 
-    if request.method == 'POST':
-        serializer = TagSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
+
+        return serializer_class
+
+
+class ListProductCategory(GenericAPIView):
+    queryset = Category.objects.all()
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    filter_backends = filtering
+    pagination_class = SimplePagination
+
+    serializer_classes = {
+        'GET': CategorySerializer,
+        'POST': CreateUpdateCategorySerializer,
+    }
+
+    def get(self, request, *args, **kwargs):
+        product = self.filter_queryset(self.get_queryset())
+        product = self.paginate_queryset(product)
+        serializer = self.get_serializer(product, many=True)
+
+        return self.get_paginated_response(serializer.data)
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception = True)
         serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-
-@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
-def tag_detail(request, pk):
-    tag = get_object_or_404(Tag, pk=pk)
-
-    if request.method == 'GET':
-        serializer = TagSerializer(tag)
         return Response(serializer.data)
 
-    if request.method in ['PUT', 'PATCH']:
-        partial = request.method == 'PATCH'
-        serializer = TagSerializer(tag, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
+    def get_serializer_class(self):
+        assert self.serializer_classes is not None, (
+                "'%s' should either include a `serializer_classes` attribute, "
+                "or override the `get_serializer_class()` method."
+                % self.__class__.__name__
+        )
+
+        serializer_class = self.serializer_classes.get(self.request.method)
+
+        assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
+
+        return serializer_class
+
+class DetailProductCategory(GenericAPIView):
+    queryset = Category.objects.all()
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    lookup_field = 'id'
+
+    serializer_classes = {
+        'GET': DetailCategorySerializer,
+        'PUT': CreateUpdateCategorySerializer,
+        'PATCH': CreateUpdateCategorySerializer,
+    }
+
+    def get(self, request, *args, **kwargs):
+        product = self.get_object()
+        serializer = self.get_serializer(product)
+
+        return Response(serializer.data)
+
+    def put(self, request, *args, **kwargs):
+        return self.update(request)
+
+    def patch(self, request, *args, **kwargs):
+        return self.update(request, partial=True)
+
+    def update(self, request, partial=False):
+        product = self.get_object()
+        serializer = self.get_serializer(product, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception = True)
         serializer.save()
+
         return Response(serializer.data)
 
-    if request.method == 'DELETE':
-        tag.delete()
+    def delete(self, request, *args, **kwargs):
+        product = self.get_object()
+        product.delete()
+
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def get_serializer_class(self):
+        assert self.serializer_classes is not None, (
+                "'%s' should either include a `serializer_classes` attribute, "
+                "or override the `get_serializer_class()` method."
+                % self.__class__.__name__
+        )
+
+        serializer_class = self.serializer_classes.get(self.request.method)
+
+        assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
+
+        return serializer_class
+
+
+class ListProductTag(GenericAPIView):
+    queryset = Tag.objects.all()
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    filter_backends = filtering
+    pagination_class = SimplePagination
+
+    serializer_classes = {
+        'GET': TagSerializer,
+        'POST': CreateUpdateTagSerializer,
+    }
+
+    def get(self, request, *args, **kwargs):
+        product = self.filter_queryset(self.get_queryset())
+        product = self.paginate_queryset(product)
+        serializer = self.get_serializer(product, many=True)
+
+        return self.get_paginated_response(serializer.data)
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception = True)
+        serializer.save()
+
+        return Response(serializer.data)
+
+    def get_serializer_class(self):
+        assert self.serializer_classes is not None, (
+                "'%s' should either include a `serializer_classes` attribute, "
+                "or override the `get_serializer_class()` method."
+                % self.__class__.__name__
+        )
+
+        serializer_class = self.serializer_classes.get(self.request.method)
+
+        assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
+
+        return serializer_class
+
+class DetailProductTag(GenericAPIView):
+    queryset = Tag.objects.all()
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    lookup_field = 'id'
+
+    serializer_classes = {
+        'GET': DetailTagSerializer,
+        'PUT': CreateUpdateTagSerializer,
+        'PATCH': CreateUpdateTagSerializer,
+    }
+
+    def get(self, request, *args, **kwargs):
+        product = self.get_object()
+        serializer = self.get_serializer(product)
+
+        return Response(serializer.data)
+
+    def put(self, request, *args, **kwargs):
+        return self.update(request)
+
+    def patch(self, request, *args, **kwargs):
+        return self.update(request, partial=True)
+
+    def update(self, request, partial=False):
+        product = self.get_object()
+        serializer = self.get_serializer(product, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception = True)
+        serializer.save()
+
+        return Response(serializer.data)
+
+    def delete(self, request, *args, **kwargs):
+        product = self.get_object()
+        product.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def get_serializer_class(self):
+        assert self.serializer_classes is not None, (
+                "'%s' should either include a `serializer_classes` attribute, "
+                "or override the `get_serializer_class()` method."
+                % self.__class__.__name__
+        )
+
+        serializer_class = self.serializer_classes.get(self.request.method)
+
+        assert serializer_class is not None, f'There is no serializer for "{self.request.method}" method.'
+
+        return serializer_class
