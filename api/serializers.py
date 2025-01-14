@@ -1,3 +1,4 @@
+from itertools import product
 from pprint import pprint
 
 from rest_framework import serializers
@@ -20,10 +21,52 @@ class UserSerializer(serializers.ModelSerializer):
         )
 
 
+
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImage
         exclude = ('created_at', 'updated_at', 'product')
+
+class CreateProductImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductImage
+        exclude = ('created_at', 'updated_at')
+
+    def create(self, validated_data):
+        images = validated_data.pop('images', [])
+
+        file_images = []
+
+        for image in images:
+            try:
+                file = base64_to_image_file(image, uuid.uuid4())
+                file_images.append(file)
+            except Exception as e:
+                print(e)
+                raise serializers.ValidationError(
+                    {'images': ['Загрузите корректное изображение']}
+                )
+
+        product = super().create(validated_data)
+
+        for file_image in file_images:
+            product_image = ProductImage.objects.create(product=product)
+            product_image.image.save(file_image.name, file_image)
+            product_image.save()
+
+        return product
+
+class DetailProductImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductImage
+        fields = '__all__'
+
+class UploadProductImageSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = ProductImage
+        fields = '__all__'
+
 
 
 class ProductAttributeSerializer(serializers.ModelSerializer):
@@ -31,27 +74,59 @@ class ProductAttributeSerializer(serializers.ModelSerializer):
         model = ProductAttribute
         exclude = ('created_at', 'updated_at', 'product')
 
+class ListAttributeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductAttribute
+        fields = '__all__'
+
+class CreateProductAttributeSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = ProductAttribute
+        fields = '__all__'
+
+class UpdateProductAttributeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductAttribute
+        exclude = ('product', )
+
+
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        # fields = '__all__'
-        exclude = ('created_at', 'updated_at')
+        exclude = ('created_at', 'updated_at', )
+
+class DetailCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = '__all__'
+
+class CreateUpdateCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = '__all__'
+
 
 
 class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
-        # fields = '__all__'
         exclude = ('created_at', 'updated_at')
+
+class DetailTagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tag
+        fields = '__all__'
+
+class CreateUpdateTagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tag
+        fields = '__all__'
 
 
 class ListProductSerializer(serializers.ModelSerializer):
-    # category = serializers.CharField(source='category.name')
-    # tags = serializers.ListSerializer(child=serializers.CharField(source='tags.name'))
-
     category = CategorySerializer()
-    # tags = serializers.ListSerializer(child=TagSerializer())
     tags = TagSerializer(many=True)
     user = UserSerializer()
     image = serializers.ImageField()
@@ -65,13 +140,8 @@ class ListProductSerializer(serializers.ModelSerializer):
             'content',
         )
 
-
 class DetailProductSerializer(serializers.ModelSerializer):
-    # category = serializers.CharField(source='category.name')
-    # tags = serializers.ListSerializer(child=serializers.CharField(source='tags.name'))
-
     category = CategorySerializer()
-    # tags = serializers.ListSerializer(child=TagSerializer())
     tags = TagSerializer(many=True)
     user = UserSerializer()
     image = serializers.ImageField()
@@ -81,7 +151,6 @@ class DetailProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = '__all__'
-
 
 class UpdateProductSerializer(serializers.ModelSerializer):
     class Meta:
@@ -102,7 +171,6 @@ class UpdateProductSerializer(serializers.ModelSerializer):
         if value < 0:
             raise serializers.ValidationError('Цена не может быть отрицательной')
         return value
-
 
 class CreateProductSerializer(serializers.ModelSerializer):
 
@@ -146,21 +214,7 @@ class CreateProductSerializer(serializers.ModelSerializer):
         return product
 
 
-class UploadProductImageSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = ProductImage
-        fields = '__all__'
 
 
-class CreateProductAttributeSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = ProductAttribute
-        fields = '__all__'
 
 
-class UpdateProductAttributeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProductAttribute
-        fields = ('name', 'value')

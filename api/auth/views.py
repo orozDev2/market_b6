@@ -6,29 +6,34 @@ from rest_framework.authtoken.models import Token
 from rest_framework.generics import GenericAPIView
 from rest_framework.views import APIView
 
-
+from account.models import User
 from api.auth.serializers import LoginSerializer, ReadUserSerializer, RegisterSerializer
 
 
-@api_view(['POST'])
-def login_api(request):
-    serializer = LoginSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    user = authenticate(**serializer.validated_data)
+class LoginApiView(GenericAPIView):
+    serializer_class = LoginSerializer
 
-    if not user:
-        return Response({'detail': 'The user does not exist or incorrect password.'}, status.HTTP_401_UNAUTHORIZED)
 
-    token, created = Token.objects.get_or_create(user=user)
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = authenticate(**serializer.validated_data)
 
-    user_serializer = ReadUserSerializer(user, context={'request': request})
+        if not user:
+            return Response({'detail': 'The user does not exist or incorrect password.'}, status.HTTP_401_UNAUTHORIZED)
 
-    data = {
-        **user_serializer.data,
-        'token': token.key
-    }
+        token, created = Token.objects.get_or_create(user=user)
 
-    return Response(data)
+        user_serializer = ReadUserSerializer(user, context={'request': request})
+
+        data = {
+            **user_serializer.data,
+            'token': token.key
+        }
+
+        return Response(data)
+
+
 
 
 class RegisterApiView(GenericAPIView):
