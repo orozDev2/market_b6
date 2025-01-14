@@ -132,7 +132,7 @@ class UploadProductImage(ProGenericAPIView):
         return Response(response_serializer.data)
 
 
-class DetailProductImage(GenericAPIView):
+class DetailProductImage(ProGenericAPIView):
     queryset = ProductImage.objects.all()
     permission_classes_by_method = {
         'GET': [AllowAny],
@@ -175,7 +175,7 @@ class DetailProductImage(GenericAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class ListProductAttribute(GenericAPIView):
+class ListProductAttribute(ProGenericAPIView):
     queryset = ProductAttribute.objects.all()
     permission_classes_by_method = {
         'GET': [AllowAny],
@@ -210,7 +210,7 @@ class ListProductAttribute(GenericAPIView):
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-class DetailProductAttribute(GenericAPIView):
+class DetailProductAttribute(ProGenericAPIView):
     queryset = ProductAttribute.objects.all()
     permission_classes_by_method = {
         'GET': [AllowAny],
@@ -253,7 +253,7 @@ class DetailProductAttribute(GenericAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class ListProductCategory(GenericAPIView):
+class ListProductCategory(ProGenericAPIView):
     queryset = Category.objects.all()
     permission_classes_by_method = {
         'GET': [AllowAny],
@@ -284,7 +284,7 @@ class ListProductCategory(GenericAPIView):
         return Response(serializer.data)
 
 
-class DetailProductCategory(GenericAPIView):
+class DetailProductCategory(ProGenericAPIView):
     queryset = Category.objects.all()
     permission_classes_by_method = {
         'GET': [AllowAny],
@@ -328,7 +328,7 @@ class DetailProductCategory(GenericAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class ListProductTag(GenericAPIView):
+class ListProductTag(ProGenericAPIView):
     queryset = Tag.objects.all()
     permission_classes = [IsAuthenticatedOrReadOnly]
 
@@ -354,7 +354,7 @@ class ListProductTag(GenericAPIView):
 
         return Response(serializer.data)
 
-class DetailProductTag(GenericAPIView):
+class DetailProductTag(ProGenericAPIView):
     queryset = Tag.objects.all()
     permission_classes_by_method = {
         'GET': [AllowAny],
