@@ -24,10 +24,6 @@ filtering = [
 ]
 
 
-filtering = [
-    SearchFilter, DjangoFilterBackend, OrderingFilter
-]
-
 class ListCreateProductApiView(ProGenericAPIView):
     queryset = Product.objects.all()
     permission_classes_by_method = {
