@@ -5,8 +5,6 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django_resized import ResizedImageField
 
-from project import settings
-
 User = get_user_model()
 
 
@@ -24,11 +22,6 @@ class Category(TimeStampAbstractModel):
         verbose_name_plural = 'категории'
 
     name = models.CharField('название', max_length=250, unique=True)
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="categories"
-    )
 
     def __str__(self):
         return f'{self.name}'
@@ -40,11 +33,6 @@ class Tag(TimeStampAbstractModel):
         verbose_name_plural = 'теги'
 
     name = models.CharField('название', max_length=255)
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="tags"
-    )
 
     def __str__(self):
         return f'{self.name}'
@@ -83,7 +71,7 @@ class Product(TimeStampAbstractModel):
     user = models.ForeignKey(User, models.CASCADE, verbose_name='пользователь')
     receive_type = models.CharField('условия получение', choices=RECEIVE_TYPE, default=ORDER, max_length=15)
     rating = models.DecimalField('рейтинг', max_digits=2, decimal_places=1,
-                                         validators=[MinValueValidator(1), MaxValueValidator(5), example_validation])
+                                 validators=[MinValueValidator(1), MaxValueValidator(5), example_validation])
     is_published = models.BooleanField('публичность', default=True)
 
     @property
@@ -104,11 +92,6 @@ class ProductImage(TimeStampAbstractModel):
 
     product = models.ForeignKey('store.Product', models.CASCADE, related_name='images', verbose_name='товар')
     image = ResizedImageField('изображение', upload_to='product_images/', quality=90, force_format='WEBP')
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="images"
-    )
 
     def __str__(self):
         return f'{self.product.name}'
@@ -123,11 +106,6 @@ class ProductAttribute(TimeStampAbstractModel):
     name = models.CharField('название', max_length=50)
     value = models.CharField('значение', max_length=50)
     product = models.ForeignKey('store.Product', models.CASCADE, related_name='attributes', verbose_name='товар')
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="attributes"
-    )
 
     def __str__(self):
         return f'{self.name} - {self.value}'
