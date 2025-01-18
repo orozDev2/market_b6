@@ -74,6 +74,11 @@ class ProductAttributeSerializer(serializers.ModelSerializer):
         model = ProductAttribute
         exclude = ('created_at', 'updated_at', 'product')
 
+class DetailProductAttributeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductAttribute
+        fields = '__all__'
+
 class ListAttributeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductAttribute

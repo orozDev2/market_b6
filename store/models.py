@@ -4,6 +4,9 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django_resized import ResizedImageField
+
+from project import settings
+
 User = get_user_model()
 
 
@@ -21,6 +24,11 @@ class Category(TimeStampAbstractModel):
         verbose_name_plural = 'категории'
 
     name = models.CharField('название', max_length=250, unique=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="categories"
+    )
 
     def __str__(self):
         return f'{self.name}'
@@ -32,6 +40,11 @@ class Tag(TimeStampAbstractModel):
         verbose_name_plural = 'теги'
 
     name = models.CharField('название', max_length=255)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="tags"
+    )
 
     def __str__(self):
         return f'{self.name}'
@@ -91,6 +104,11 @@ class ProductImage(TimeStampAbstractModel):
 
     product = models.ForeignKey('store.Product', models.CASCADE, related_name='images', verbose_name='товар')
     image = ResizedImageField('изображение', upload_to='product_images/', quality=90, force_format='WEBP')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="images"
+    )
 
     def __str__(self):
         return f'{self.product.name}'
@@ -105,6 +123,11 @@ class ProductAttribute(TimeStampAbstractModel):
     name = models.CharField('название', max_length=50)
     value = models.CharField('значение', max_length=50)
     product = models.ForeignKey('store.Product', models.CASCADE, related_name='attributes', verbose_name='товар')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="attributes"
+    )
 
     def __str__(self):
         return f'{self.name} - {self.value}'
